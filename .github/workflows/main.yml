@@ -1,0 +1,46 @@
+name: Deploy Pages
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: gh-pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - name: Apply
+        env:
+          AAB2F9: ${{ secrets.AAB2F9 }}
+          B991C9: ${{ secrets.B991C9 }}
+        run: |
+          python3 -c "
+          import sys, os, pathlib
+          pairs = [('AAB2F9', '<!-- 74a4b555cf7f1115534d516b432cf73ea54e7c -->'), ('B991C9', '<!-- a0efc527365a085a6012ea51c624feccc338 -->')]
+          path = pathlib.Path('index.html')
+          data = path.read_text(encoding='utf-8')
+          result = data
+          for key, mark in pairs:
+              token = os.environ.get(key, '')
+              if token:
+                  result = result.replace(mark, token)
+          if result == data and any(os.environ.get(k, '') for k, _ in pairs):
+              sys.exit(1)
+          if result != data:
+              path.write_text(result, encoding='utf-8')
+          "
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deploy
+        uses: actions/deploy-pages@v4
